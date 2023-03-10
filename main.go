@@ -2,6 +2,7 @@ package main
 
 import (
 	"github/co-codin/service-layer-fiber/src/database"
+	"github/co-codin/service-layer-fiber/src/routes"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -11,9 +12,7 @@ func main() {
 
 	app := fiber.New()
 
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Hello, da 👋!")
-	})
+	routes.SetUp(app)
 
 	app.Listen(":3000")
 }
