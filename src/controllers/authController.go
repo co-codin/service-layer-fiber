@@ -8,7 +8,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gofiber/fiber/v2"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func Register(c *fiber.Ctx) error {
@@ -24,7 +23,6 @@ func Register(c *fiber.Ctx) error {
 			"message": "passwords do not match",
 		})
 	}
-
 
 	user := models.User{
 		FirstName:    data["first_name"],
@@ -80,9 +78,9 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	cookie := fiber.Cookie{
-		Name:    "jwt",
-		Value:   token,
-		Expires: time.Now().Add(time.Hour * 24),
+		Name:     "jwt",
+		Value:    token,
+		Expires:  time.Now().Add(time.Hour * 24),
 		HTTPOnly: true,
 	}
 
@@ -91,4 +89,27 @@ func Login(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"message": "success",
 	})
+}
+
+func User(c *fiber.Ctx) error {
+	cookie := c.Cookies("jwt")
+
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(t *jwt.Token) (interface{}, error) {
+		return []byte("secret"), nil
+	})
+
+	if err != nil || !token.Valid {
+		c.Status(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{
+			"message": "Unauthenticated",
+		})
+	}
+
+	payload := token.Claims.(*jwt.StandardClaims)
+
+	var user models.User
+
+	database.DB.Where("id = ?", payload.Subject).First(&user)
+
+	return c.JSON(user)
 }
