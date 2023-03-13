@@ -1,7 +1,7 @@
 package models
 
 type Product struct {
-	Model,
+	Id           uint   `json:"id"`
 	Title       string  `json:"title"`
 	Description string  `json:"description"`
 	Image       string  `json:"image"`
