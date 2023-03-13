@@ -26,5 +26,6 @@ func AutoMigrate() {
 	DB.AutoMigrate(
 		models.User{},
 		models.Product{},
+		models.Link{},
 	)
 }
