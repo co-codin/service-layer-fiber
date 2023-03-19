@@ -58,16 +58,9 @@ func UpdateProduct(c *fiber.Ctx) error {
 
 	database.DB.Model(&product).Unscoped().Updates(&product)
 
-	go deleteCache("products_frontend")
-	go deleteCache("products_backend")
-
+	go database.ClearCache("products_backend", "products_frontend")
 
 	return c.JSON(product)
-}
-
-func deleteCache(key string) {
-	time.Sleep(3 * time.Second)
-	database.Cache.Del(context.Background(), key)
 }
 
 func DeleteProduct(c *fiber.Ctx) error {
@@ -78,6 +71,8 @@ func DeleteProduct(c *fiber.Ctx) error {
 	product.Id = uint(id)
 
 	database.DB.Delete(&product)
+
+	go database.ClearCache("products_backend", "products_frontend")
 
 	return nil
 }
