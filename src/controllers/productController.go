@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github/co-codin/service-layer-fiber/src/database"
 	"github/co-codin/service-layer-fiber/src/models"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -57,7 +58,16 @@ func UpdateProduct(c *fiber.Ctx) error {
 
 	database.DB.Model(&product).Unscoped().Updates(&product)
 
+	go deleteCache("products_frontend")
+	go deleteCache("products_backend")
+
+
 	return c.JSON(product)
+}
+
+func deleteCache(key string) {
+	time.Sleep(3 * time.Second)
+	database.Cache.Del(context.Background(), key)
 }
 
 func DeleteProduct(c *fiber.Ctx) error {
@@ -123,7 +133,7 @@ func ProductBackend(c *fiber.Ctx) error {
 	if s := c.Query("s"); s != "" {
 		lower := strings.ToLower(s)
 		for _, product := range products {
-			if strings.Contains(strings.ToLower(product.Title), s) || strings.Contains(strings.ToLower(product.Description), s) {
+			if strings.Contains(strings.ToLower(product.Title), lower) || strings.Contains(strings.ToLower(product.Description), lower) {
 				searchedProducts = append(searchedProducts, product)
 			}
 		}
@@ -131,5 +141,39 @@ func ProductBackend(c *fiber.Ctx) error {
 		searchedProducts = products
 	}
 
-	return c.JSON(searchedProducts)
+	if sortParam := c.Query("sort"); sortParam != "" {
+		sortLower := strings.ToLower(sortParam)
+		if sortLower == "asc" {
+			sort.Slice(searchedProducts, func(i, j int) bool {
+				return searchedProducts[i].Price < searchedProducts[j].Price
+			})
+		} else if sortLower == "desc" {
+			sort.Slice(searchedProducts, func(i, j int) bool {
+				return searchedProducts[i].Price > searchedProducts[j].Price
+			})
+		}
+	}
+
+	var total = len(searchedProducts)
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	perPage := 9
+
+	var data []models.Product
+
+	if total <= page*perPage && total >= (page-1)*perPage {
+		data = searchedProducts[(page-1)*perPage : total]
+	} else if total >= page*perPage {
+		data = searchedProducts[(page-1)*perPage : page*perPage]
+	} else {
+		data = []models.Product{}
+	}
+
+	return c.JSON(fiber.Map{
+		"data": data,
+		"meta": fiber.Map{
+			"total":     total,
+			"page":      page,
+			"last_page": total/perPage + 1,
+		},
+	})
 }
